@@ -117,6 +117,7 @@ function delay(time) {
         await tab.waitForNavigation({waitUntil: "networkidle2"});
         
         await tab.click("div[data-label=offers]");
+        // await tab.waitForSelector(".sc-jDwBTQ.lfmjW > input");
         
         //**************************COUPON TESTING **********************************/
         
@@ -124,25 +125,30 @@ function delay(time) {
         let tab2 = await browser.newPage();
         await tab2.goto(couponUrl, {waitUntil: "networkidle0"});
         let promoCodes = await getPromoCodes(tab2);
-
+        tab2.close();
+        
+        //testing promo codes
+        
         for(let i=0;i<promoCodes.length;i++){
             console.log(promoCodes[i]);
         }
-
         
+        let pUrl = tab.url();
 
+            for(let i=0;i<promoCodes.length;i++){
 
+                let newtab = await browser.newPage();
+                
 
-
-
-        
-
-        
+                tryPromoCode(pUrl, newtab, promoCodes[i])
+                
+            }
+              
         
 
     }
     catch(err){
-        console.log("Error "+ err);
+        console.log(err);
     }
 })()
 
@@ -173,7 +179,33 @@ async function getPromoCodes(tab2){
                 allPromoCodes.push(promocode);
             }
         }
-
-        tab2.close();
         return allPromoCodes;
+}
+
+async function tryPromoCode(pUrl, tab, promoCode){
+
+    await tab.goto(pUrl,{waitUntil:"networkidle2"});
+    await tab.click("div[data-label=offers]");
+    // await tab.waitForNavigation({waitUntil: "networkidle2"});
+    // console.log("nav wait complete");
+    await tab.waitForSelector("input[type=text]")
+    console.log("selector wait complete")
+    // let promoField = await tab.$("input[type=text]");
+    // console.log("1");
+    // await tab.click("input[type=text]");
+    // console.log("field clicked");
+    await tab.type("input[type=text]", promoCode);
+    await delay(1000);
+    await tab.click(".btn--grn");
+    
+    await tab.waitForSelector(".inpt-offr-cpn-err");
+    let resultEle = await tab.$(".inpt-offr-cpn-err")
+    let resultText = await tab.evaluate(function(ele){
+        return ele.textContent;
+    },resultEle)
+
+    console.log(resultText);
+
+    tab.close();
+
 }
