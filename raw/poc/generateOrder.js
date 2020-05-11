@@ -13,7 +13,7 @@ function delay(time) {
 
         //read cred file
         let data = await fs.promises.readFile(cFile);
-        let {user, pwd, url} = JSON.parse(data);
+        let {user, pwd, url, couponUrl} = JSON.parse(data);
 
         //launch browser
         let browser =  await puppeteer.launch({
@@ -108,7 +108,20 @@ function delay(time) {
         }   
 
         await Promise.all(allPdtsAddtoCart);
-        console.log("All products added to cart");
+        // console.log("All products added to cart");
+
+// ***************************CHECKOUT**************************************
+        await delay(500)
+        let checkOutBtn = await tab.$("button[data-label=miniCartCheckout]")
+        await checkOutBtn.click();
+        await tab.waitForNavigation({waitUntil: "networkidle2"});
+
+        await tab.click("div[data-label=offers]");
+
+//**************************COUPON TESTING **********************************/
+
+        let tab2 = await browser.newPage();
+        await tab2.goto(couponUrl, {waitUntil: "networkidle2"});
 
 
 
