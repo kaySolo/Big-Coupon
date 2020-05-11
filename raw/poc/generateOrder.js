@@ -1,5 +1,6 @@
 let puppeteer = require("puppeteer");
 let fs = require("fs");
+let prompt = require('prompt-sync')();
 let cFile = process.argv[2];
 
 function delay(time) {
@@ -7,7 +8,7 @@ function delay(time) {
         setTimeout(resolve, time)
     });
  }
-
+ let resultTable = [];
 (async function(){
     try{
 
@@ -75,7 +76,8 @@ function delay(time) {
             for(let j=0;j<order.length;j++){
                 if(pdtName === order[j]){
                     orderNo.push(i);
-                    console.log("Removed: "+order.splice(j,1));
+                    let removedItem = order.splice(j,1);
+                    // console.log("Removed: "+ removedItem);
                     break;
                 }
             }
@@ -92,8 +94,8 @@ function delay(time) {
         //add orders from orderNo array to cart
         for(let idx=0;idx<orderNo.length;idx++){
             let pdtToAdd = allProducts[orderNo[idx]];
-            console.log(allProducts.length)
-            console.log(orderNo[idx])
+            // console.log(allProducts.length)
+            // console.log(orderNo[idx])
             // console.log(pdtToAdd)
             // let addToCartBtn = await tab.evaluate(function(ele){
 
@@ -130,20 +132,32 @@ function delay(time) {
         //testing promo codes
         
         for(let i=0;i<promoCodes.length;i++){
-            console.log(promoCodes[i]);
+            // console.log(promoCodes[i]);
         }
         
         let pUrl = tab.url();
 
-            for(let i=0;i<promoCodes.length;i++){
+        // console.log("CODE NUMBER"+"\t"+"PROMO CODE"+"\t"+"RESULT");
+        let allResultPromise = [];
+
+            for(let i=promoCodes.length-1;i>=0;i--){
 
                 let newtab = await browser.newPage();
                 
 
-                tryPromoCode(pUrl, newtab, promoCodes[i])
-                
+                allResultPromise.push(tryPromoCode(pUrl, newtab, promoCodes[i], (i+1)));
             }
-              
+        
+        await Promise.all(allResultPromise);
+        console.table(resultTable);
+
+        let inp = prompt('Choose Promo Code. Enter S.No : ');
+        console.log("Selected Promo code::")
+        console.log("S.NO"+"\t"+"PROMO CODE");
+        console.log(resultTable[inp-1].Sno+"\t"+resultTable[inp-1].Promo_Code);
+        
+
+
         
 
     }
@@ -182,14 +196,14 @@ async function getPromoCodes(tab2){
         return allPromoCodes;
 }
 
-async function tryPromoCode(pUrl, tab, promoCode){
+async function tryPromoCode(pUrl, tab, promoCode, sno){
 
     await tab.goto(pUrl,{waitUntil:"networkidle2"});
     await tab.click("div[data-label=offers]");
     // await tab.waitForNavigation({waitUntil: "networkidle2"});
     // console.log("nav wait complete");
     await tab.waitForSelector("input[type=text]")
-    console.log("selector wait complete")
+    // console.log("selector wait complete")
     // let promoField = await tab.$("input[type=text]");
     // console.log("1");
     // await tab.click("input[type=text]");
@@ -204,8 +218,16 @@ async function tryPromoCode(pUrl, tab, promoCode){
         return ele.textContent;
     },resultEle)
 
-    console.log(resultText);
+    //format result
+    // let result = [sno, promoCode, resultText];
+    let result = {
+        Sno: sno, 
+        Promo_Code : promoCode, 
+        Result: resultText
+    }
+    // console.log(sno+"\t"+promoCode+"\t"+resultText);
 
     tab.close();
+    resultTable.push(result)
 
 }
