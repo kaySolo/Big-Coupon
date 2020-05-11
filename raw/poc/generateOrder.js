@@ -29,7 +29,7 @@ function delay(time) {
         //menu page
         await tab.goto(url, {waitUntil: "networkidle2"});
 
-        //login
+//**************************LOGIN **********************************************/
         await tab.click(".prf-grp-txt");
         // await tab.waitForNavigation({waitUntil: "networkidle2"});
 
@@ -56,8 +56,64 @@ function delay(time) {
         //wait for original page to load
         await tab.waitForNavigation({waitUntil: "networkidle2"});
 
-        //add pizza to cart
-        
+//*******************************ITEMS ADDED TO CART************************************ */ 
+        let order = ["Margherita","Pepper Barbecue Chicken","Indi Chicken Tikka"];
+        let orderNo = [];
+        let allProducts = await tab.$$(".itm-wrppr");
+        // console.log(allProducts.length);
+
+        for(let i=0;i<allProducts.length;i++){
+            let currPdt = allProducts[i];
+            
+            let pdtName = await tab.evaluate(function(ele){
+                return ele.querySelector("div").getAttribute("data-label");
+            },currPdt)
+            
+            // console.log((i+1)+" > "+pdtName);
+            
+            
+            for(let j=0;j<order.length;j++){
+                if(pdtName === order[j]){
+                    orderNo.push(i);
+                    console.log("Removed: "+order.splice(j,1));
+                    break;
+                }
+            }
+            
+            if(order.length==0){
+                // console.log(orderNo.length)
+                break;
+            }
+        }
+
+        //all products at add btn array
+        let allPdtsAddtoCart = [];
+
+        //add orders from orderNo array to cart
+        for(let idx=0;idx<orderNo.length;idx++){
+            let pdtToAdd = allProducts[orderNo[idx]];
+            console.log(allProducts.length)
+            console.log(orderNo[idx])
+            // console.log(pdtToAdd)
+            // let addToCartBtn = await tab.evaluate(function(ele){
+
+            //     return ele.querySelector("button[data-label=addTocart]");
+
+            // },pdtToAdd)
+
+            await tab.waitForSelector("button[data-label=addTocart]")
+            let addToCartBtn = await pdtToAdd.$("button[data-label=addTocart]")
+
+            allPdtsAddtoCart.push(addToCartBtn.click());
+        }   
+
+        await Promise.all(allPdtsAddtoCart);
+        console.log("All products added to cart");
+
+
+
+
+
 
         
 
