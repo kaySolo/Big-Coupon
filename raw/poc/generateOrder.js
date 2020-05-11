@@ -19,7 +19,7 @@ function delay(time) {
         let browser =  await puppeteer.launch({
             headless : false,
             defaultViewport : null,
-            args : ["--start-maximized", "--disable-notifications","--incognito"]
+            args : ["--start-maximized", "--disable-notifications"]
         })
 
         // tab
@@ -115,14 +115,21 @@ function delay(time) {
         let checkOutBtn = await tab.$("button[data-label=miniCartCheckout]")
         await checkOutBtn.click();
         await tab.waitForNavigation({waitUntil: "networkidle2"});
-
+        
         await tab.click("div[data-label=offers]");
-
-//**************************COUPON TESTING **********************************/
-
+        
+        //**************************COUPON TESTING **********************************/
+        
+        //fetch promo codes
         let tab2 = await browser.newPage();
-        await tab2.goto(couponUrl, {waitUntil: "networkidle2"});
+        await tab2.goto(couponUrl, {waitUntil: "networkidle0"});
+        let promoCodes = await getPromoCodes(tab2);
 
+        for(let i=0;i<promoCodes.length;i++){
+            console.log(promoCodes[i]);
+        }
+
+        
 
 
 
@@ -138,3 +145,35 @@ function delay(time) {
         console.log("Error "+ err);
     }
 })()
+
+async function getPromoCodes(tab2){
+
+
+        await tab2.click(".list-inline.go-tLinks > li[data-type=cpn]");
+
+        let allLiElements = await tab2.$$("#category_coupons > ul > li");
+        // console.log(allLiElements.length)
+
+        let allPromoCodes = [];
+
+        for(let idx=0;idx<allLiElements.length;idx++){
+            //find classname
+            let clsname = await tab2.evaluate(function(ele){
+                return ele.className;
+            },allLiElements[idx])
+            
+            let promocode;
+            // console.log(idx+" "+clsname);
+            if(clsname != "hide"){
+                promocode = await tab2.evaluate(function(ele){
+                    return ele.querySelector("small").textContent
+                },allLiElements[idx])
+
+                // console.log(promocode);
+                allPromoCodes.push(promocode);
+            }
+        }
+
+        tab2.close();
+        return allPromoCodes;
+}
