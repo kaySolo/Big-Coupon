@@ -2,6 +2,7 @@ let puppeteer = require("puppeteer");
 let fs = require("fs");
 let prompt = require('prompt-sync')();
 let cFile = process.argv[2];
+let oFile = process.argv[3];
 
 function delay(time) {
     return new Promise(function(resolve) { 
@@ -15,6 +16,10 @@ function delay(time) {
         //read cred file
         let data = await fs.promises.readFile(cFile);
         let {user, pwd, url, couponUrl} = JSON.parse(data);
+
+        //read order file
+        let orderFile = await fs.promises.readFile(oFile);
+        let {order} = JSON.parse(orderFile);
 
         //launch browser
         let browser =  await puppeteer.launch({
@@ -58,7 +63,7 @@ function delay(time) {
         await tab.waitForNavigation({waitUntil: "networkidle2"});
 
 //*******************************ITEMS ADDED TO CART************************************ */ 
-        let order = ["Margherita","Pepper Barbecue Chicken","Indi Chicken Tikka"];
+        // let order = JSON.parse(oFile)
         let orderNo = [];
         let allProducts = await tab.$$(".itm-wrppr");
         // console.log(allProducts.length);
@@ -151,10 +156,35 @@ function delay(time) {
         await Promise.all(allResultPromise);
         console.table(resultTable);
 
-        let inp = prompt('Choose Promo Code. Enter S.No : ');
-        console.log("Selected Promo code::")
-        console.log("S.NO"+"\t"+"PROMO CODE");
-        console.log(resultTable[inp-1].Sno+"\t"+resultTable[inp-1].Promo_Code);
+        let inp = prompt('Choose Promo Code. Enter index no.: ');
+        let selectedPromo = resultTable[inp].Promo_Code;
+        console.log("Selected Promo code:: "+ selectedPromo)
+        // console.log("S.NO"+"\t"+"PROMO CODE");
+        // console.log();
+        let ch = prompt('Continue with order booking?(Y/N): ');
+        
+        if(ch == 'Y' || ch == 'y'){
+            //book order    
+            await tab.click("div[data-label=offers]");
+
+            await tab.waitForSelector("input[type=text]")
+        // console.log("selector wait complete")
+        // let promoField = await tab.$("input[type=text]");
+        // console.log("1");
+        // await tab.click("input[type=text]");
+        // console.log("field clicked");
+            await tab.type("input[type=text]", selectedPromo);
+            await delay(1000);
+            await tab.click(".btn--grn");
+     
+            console.log("Promo-code applied successfully!")
+
+
+        }else{
+            //cancel order
+            tab.close();
+            console.log("***Order cancelled***")
+        }
         
 
 
@@ -196,7 +226,7 @@ async function getPromoCodes(tab2){
         return allPromoCodes;
 }
 
-async function tryPromoCode(pUrl, tab, promoCode, sno){
+async function tryPromoCode(pUrl, tab, promoCode){
 
     await tab.goto(pUrl,{waitUntil:"networkidle2"});
     await tab.click("div[data-label=offers]");
@@ -211,23 +241,70 @@ async function tryPromoCode(pUrl, tab, promoCode, sno){
     await tab.type("input[type=text]", promoCode);
     await delay(1000);
     await tab.click(".btn--grn");
-    
-    await tab.waitForSelector(".inpt-offr-cpn-err");
-    let resultEle = await tab.$(".inpt-offr-cpn-err")
-    let resultText = await tab.evaluate(function(ele){
-        return ele.textContent;
-    },resultEle)
 
+    //check if promocode is applied not 
+    await delay(1000);
+
+    let inputTag = await tab.evaluate(function(selector){
+
+        // if (document.querySelector(selector) == ""){
+
+        //     return false;
+        // }
+        // else{
+        //     return true;
+        // }
+
+        return document.querySelector(selector);
+
+    },"input[type=text]")
+
+    let inputTagPresent = true;
+
+    // console.log(inputTag);
+    if(inputTag+"" === "null"){
+        inputTagPresent = false;
+    }
+    let resultText;
+    if(inputTagPresent){
+        //not applied
+        //input tag is present => page is not reloaded => promocode not applied
+        console.log("Promo not applied")
+
+        await tab.waitForSelector(".inpt-offr-cpn-err");
+        let resultEle = await tab.$(".inpt-offr-cpn-err")
+        resultText = await tab.evaluate(function(ele){
+            return ele.textContent;
+        },resultEle)
+        
+    }
+    else{
+        //applied
+        console.log("Promo applied successfully")
+        let discountEle = await tab.$(".txt--wrpr.marginBottom .rupee");
+        let discountAmt = await (await discountEle.getProperty('textContent')).jsonValue();
+        console.log(discountAmt);
+        //remove applied promo code
+
+        await (await tab.$(".offr-strp-dlt-bttn")).click();
+        await delay(1000);
+
+        resultText = `Discount of Rs.${discountAmt}.`
+        
+    }
+    
+    
     //format result
     // let result = [sno, promoCode, resultText];
-    let result = {
-        Sno: sno, 
+    // console.log(sno+"\t"+promoCode+"\t"+resultText);
+    let result = { 
         Promo_Code : promoCode, 
         Result: resultText
     }
-    // console.log(sno+"\t"+promoCode+"\t"+resultText);
 
     tab.close();
     resultTable.push(result)
-
+    
+    
+    
 }
